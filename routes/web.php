@@ -14,6 +14,7 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\CleaningKinerjaController;
 use App\Http\Controllers\SecurityPatroliController;
+use App\Http\Controllers\AdminDocumentationController;
 
 // ======================================================================
 // PUBLIC ROUTES
@@ -118,7 +119,7 @@ Route::prefix('cleaning')->group(function () {
         Route::get('/dashboard', [HomeController::class, 'managerDashboard'])->name('dashboard');
         Route::get('/laporan', [HomeController::class, 'laporanManager'])->name('laporan');
         Route::get('/log', [HomeController::class, 'managerLog'])->name('log');
-        
+
         // LOG ABSENSI untuk Manager
         Route::get('/log-absen', [AttendanceController::class, 'logAbsensiManager'])->name('log-absen');
         Route::get('/log-absen/data', [AttendanceController::class, 'getLogAbsensiData'])->name('log-absen.data');
@@ -129,7 +130,7 @@ Route::prefix('cleaning')->group(function () {
         Route::post('/pegawai', [HomeController::class, 'managerTambahPegawai'])->name('pegawai.tambah');
         Route::put('/pegawai/{id}', [HomeController::class, 'managerUpdatePegawai'])->name('pegawai.update');
         Route::delete('/pegawai/{id}', [HomeController::class, 'managerHapusPegawai'])->name('pegawai.hapus');
-        
+
         // Hapus pegawai dengan riwayat
         Route::delete('/pegawai/force-delete/{id}', [HomeController::class, 'managerForceDeletePegawai'])->name('pegawai.force-delete');
 
@@ -147,7 +148,7 @@ Route::prefix('cleaning')->group(function () {
         Route::get('/dashboard', [HomeController::class, 'adminDashboard'])->name('dashboard');
         Route::get('/pegawai', [HomeController::class, 'kelolaPegawai'])->name('pegawai');
         Route::get('/laporan', [HomeController::class, 'laporanAdmin'])->name('laporan');
-        
+
         // LOG ABSENSI untuk Admin
         Route::get('/log-absen', [AttendanceController::class, 'logAbsensiAdmin'])->name('log-absen');
         Route::get('/log-absen/data', [AttendanceController::class, 'getLogAbsensiData'])->name('log-absen.data');
@@ -159,31 +160,31 @@ Route::prefix('cleaning')->group(function () {
         Route::prefix('rapot')->name('rapot.')->group(function () {
             // List pegawai untuk evaluasi
             Route::get('/', [RapotController::class, 'index'])->name('index');
-            
+
             // Form evaluasi kinerja
             Route::get('/evaluasi/{user}', [RapotController::class, 'create'])->name('evaluasi.create');
-            
+
             // Simpan evaluasi kinerja
             Route::post('/evaluasi/{user}', [RapotController::class, 'store'])->name('evaluasi.store');
-            
+
             // Tampilkan detail evaluasi
             Route::get('/evaluasi/show/{rapot}', [RapotController::class, 'showEvaluasi'])->name('evaluasi.show');
-            
+
             // Generate rapot otomatis (standar)
             Route::post('/generate/{user}', [RapotController::class, 'generateRapot'])->name('generate');
-            
+
             // Detail rapot umum
             Route::get('/{rapot}', [RapotController::class, 'show'])->name('show');
-            
+
             // Edit rapot
             Route::get('/{rapot}/edit', [RapotController::class, 'edit'])->name('edit');
-            
+
             // Update rapot
             Route::put('/{rapot}', [RapotController::class, 'update'])->name('update');
-            
+
             // Hapus rapot
             Route::delete('/{rapot}', [RapotController::class, 'destroy'])->name('delete');
-            
+
             // Export PDF
             Route::get('/{rapot}/export-pdf', [RapotController::class, 'exportPDF'])->name('export.pdf');
         });
@@ -196,23 +197,28 @@ Route::prefix('cleaning')->group(function () {
             Route::post('/', [AnnouncementController::class, 'store'])->name('store');
             Route::delete('/{id}', [AnnouncementController::class, 'destroy'])->name('delete');
         });
-        
+
         // Alias untuk route admin.pengumuman
         Route::get('/pengumuman', [AnnouncementController::class, 'indexAdmin'])->name('pengumuman');
+
+        // ======================================================================
+        // DOKUMENTASI CLEANING & SECURITY
+        // ======================================================================
+        Route::get('/dokumentasi', [AdminDocumentationController::class, 'index'])->name('dokumentasi');
     });
 
     // ======================================================================
     // SHARED USER ROUTES (Semua user bisa akses)
     // ======================================================================
-    
+
     // RAPOT USER
     Route::get('/rapot-saya', [RapotController::class, 'indexUser'])->name('rapot.saya');
     Route::get('/rapot-user', [RapotController::class, 'indexUser'])->name('rapot.user');
-    
+
     // Detail rapot untuk user
     Route::get('/rapot/{rapot}', [RapotController::class, 'show'])->name('rapot.show');
     Route::get('/rapot-evaluasi/{rapot}', [RapotController::class, 'showEvaluasi'])->name('rapot.evaluasi.show');
-    
+
     // PENGUMUMAN USER
     Route::get('/pengumuman', [AnnouncementController::class, 'showToUsers'])->name('pengumuman.user');
 

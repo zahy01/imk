@@ -13,4 +13,15 @@ class KinerjaCleaning extends Model
         'foto',
         'tanggal',
     ];
+
+    protected $casts = [
+        'tanggal' => 'date',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }
