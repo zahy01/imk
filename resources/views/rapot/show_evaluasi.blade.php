@@ -233,7 +233,7 @@
                                 <td class="px-4 py-3 text-sm text-stone-600">{{ $absen['check_in'] ?? '-' }}</td>
                                 <td class="px-4 py-3 text-sm text-stone-600">{{ $absen['check_out'] ?? '-' }}</td>
                                 <td class="px-4 py-3">
-                                    <span class="inline-flex text-xs font-semibold px-2.5 py-1 rounded-full 
+                                    <span class="inline-flex text-xs font-semibold px-2.5 py-1 rounded-full
                                         {{ ($absen['jam_kerja'] ?? 0) > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800' }}">
                                         {{ isset($absen['jam_kerja']) ? number_format(abs($absen['jam_kerja']), 2) . ' jam' : '-' }}
                                     </span>
@@ -289,7 +289,112 @@
             @endif
         </div>
     </div>
-</div>
+
+    {{-- Bukti Patroli dan Cleaning --}}
+    <div class="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden mb-8">
+        <div class="px-6 md:px-8 py-6 border-b border-stone-100 bg-stone-50/30">
+            <h2 class="text-base font-bold text-stone-800 flex items-center gap-2">
+                <i class="fas fa-file-alt text-[#2d6a4f]"></i> Bukti Patroli dan Cleaning
+            </h2>
+            <p class="text-xs text-stone-400 mt-1">Rekap bukti kegiatan lapangan di periode rapot</p>
+        </div>
+
+        <div class="p-6 md:p-8 grid grid-cols-1 xl:grid-cols-2 gap-5">
+            <div class="bg-stone-50 rounded-2xl p-5 border border-stone-200">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-sm font-bold text-stone-700">Patroli Keamanan</h3>
+                        <p class="text-xs text-stone-400">Total bukti: {{ $patrolEvidence->count() ?? 0 }}</p>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">Patroli</span>
+                </div>
+
+                @if($patrolEvidence->isNotEmpty())
+                <div class="overflow-x-auto rounded-xl border border-stone-200">
+                    <table class="w-full text-sm">
+                        <thead class="bg-white border-b border-stone-200">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">Waktu</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">Area</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">Keterangan</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">Foto</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-stone-100 bg-white">
+                            @foreach($patrolEvidence as $item)
+                            <tr class="hover:bg-[#f8f9fa] transition">
+                                <td class="px-4 py-3 text-stone-700">
+                                    {{ optional(\Carbon\Carbon::parse($item->waktu_patroli))->format('d/m/Y H:i') ?? '-' }}
+                                </td>
+                                <td class="px-4 py-3 text-stone-700">{{ $item->nama_area ?? '-' }}</td>
+                                <td class="px-4 py-3 text-stone-600">{{ \Illuminate\Support\Str::limit($item->keterangan ?? '-', 40) }}</td>
+                                <td class="px-4 py-3">
+                                    @if($item->foto)
+                                    <a href="{{ asset($item->foto) }}" target="_blank" rel="noopener" class="text-[#2d6a4f] font-semibold underline">Lihat</a>
+                                    @else
+                                    -
+                                    @endif
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                @else
+                <div class="text-center py-10 rounded-xl border border-dashed border-stone-200">
+                    <p class="text-sm text-stone-500">Tidak ada data patroli untuk periode ini.</p>
+                </div>
+                @endif
+            </div>
+
+            <div class="bg-stone-50 rounded-2xl p-5 border border-stone-200">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-sm font-bold text-stone-700">Cleaning</h3>
+                        <p class="text-xs text-stone-400">Total bukti: {{ $cleaningEvidence->count() ?? 0 }}</p>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Cleaning</span>
+                </div>
+
+                @if($cleaningEvidence->isNotEmpty())
+                <div class="overflow-x-auto rounded-xl border border-stone-200">
+                    <table class="w-full text-sm">
+                        <thead class="bg-white border-b border-stone-200">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">Tanggal</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">Area</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">Keterangan</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">Foto</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-stone-100 bg-white">
+                            @foreach($cleaningEvidence as $item)
+                            <tr class="hover:bg-[#f8f9fa] transition">
+                                <td class="px-4 py-3 text-stone-700">{{ optional(\Carbon\Carbon::parse($item->tanggal))->format('d/m/Y') ?? '-' }}</td>
+                                <td class="px-4 py-3 text-stone-700">{{ $item->area ?? '-' }}</td>
+                                <td class="px-4 py-3 text-stone-600">{{ \Illuminate\Support\Str::limit($item->keterangan ?? '-', 40) }}</td>
+                                <td class="px-4 py-3">
+                                    @if($item->foto)
+                                    <a href="{{ asset('storage/' . $item->foto) }}" target="_blank" rel="noopener" class="text-[#2d6a4f] font-semibold underline">Lihat</a>
+                                    @else
+                                    -
+                                    @endif
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                @else
+                <div class="text-center py-10 rounded-xl border border-dashed border-stone-200">
+                    <p class="text-sm text-stone-500">Tidak ada data cleaning untuk periode ini.</p>
+                </div>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    {{-- Footer Actions --}}
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 

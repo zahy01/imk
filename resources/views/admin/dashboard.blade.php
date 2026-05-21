@@ -78,6 +78,67 @@
         </div>
     </div>
 
+    {{-- Field Activity Summary --}}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-5 mb-8">
+        <div class="bg-white rounded-2xl p-5 border border-gray-200 transition-all hover:border-[#eaf4f1] hover:shadow-sm">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Patroli Hari Ini</p>
+                    <p class="text-3xl font-bold text-[#2c5e4e]">{{ number_format($totalPatroliHariIni ?? 0) }}</p>
+                    <p class="text-xs text-gray-400 mt-1">Laporan keamanan</p>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-[#eaf4f1] flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-[#2c5e4e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m4 4h-1V9m-6 7h.01M6 20h12a2 2 0 002-2V8a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-gray-200 transition-all hover:border-[#eaf4f1] hover:shadow-sm">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Cleaning Hari Ini</p>
+                    <p class="text-3xl font-bold text-[#2c5e4e]">{{ number_format($totalCleaningHariIni ?? 0) }}</p>
+                    <p class="text-xs text-gray-400 mt-1">Laporan kebersihan</p>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-[#eaf4f1] flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-[#2c5e4e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a4 4 0 014-4h10a4 4 0 014 4v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 14h10M7 18h6"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-gray-200 transition-all hover:border-[#eaf4f1] hover:shadow-sm">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Pelapor Hari Ini</p>
+                    <p class="text-3xl font-bold text-[#2c5e4e]">{{ number_format($reportingUsers ?? 0) }}</p>
+                    <p class="text-xs text-gray-400 mt-1">Orang</p>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-[#eaf4f1] flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-[#2c5e4e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-gray-200 transition-all hover:border-[#eaf4f1] hover:shadow-sm">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Area Terlapor</p>
+                    <p class="text-3xl font-bold text-[#2c5e4e]">{{ number_format($totalAreas ?? 0) }}</p>
+                    <p class="text-xs text-gray-400 mt-1">Area</p>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-[#eaf4f1] flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-[#2c5e4e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10l1.553 2.33a2 2 0 001.606.96H9m6 0h3.841a2 2 0 001.605-.96L21 10M3 10V6a3 3 0 013-3h12a3 3 0 013 3v4M3 10v8a3 3 0 003 3h12a3 3 0 003-3v-8"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- Charts Section --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
 
@@ -145,6 +206,20 @@
                     </span>
                 </div>
             </div>
+        </div>
+    </div>
+
+    {{-- Perbandingan Antara Patroli dan Cleaning --}}
+    <div class="bg-white rounded-2xl p-5 md:p-6 border border-gray-200 shadow-sm mb-5">
+        <div class="flex flex-wrap justify-between items-start gap-3 mb-4">
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700">Perbandingan Antara Patroli dan Cleaning</h3>
+                <p class="text-xs text-gray-400">Ringkasan jumlah laporan hari ini</p>
+            </div>
+            <div class="text-xs text-gray-500">Patroli: {{ $totalPatroliHariIni ?? 0 }} • Cleaning: {{ $totalCleaningHariIni ?? 0 }}</div>
+        </div>
+        <div class="h-[220px]">
+            <canvas id="patrolCleaningChart"></canvas>
         </div>
     </div>
 
@@ -245,6 +320,56 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                             return `${label}: ${ctx.parsed}`;
                         }
+                    }
+                }
+            }
+        }
+    });
+
+    const patrolCleaningCtx = document.getElementById('patrolCleaningChart').getContext('2d');
+    new Chart(patrolCleaningCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Patroli', 'Cleaning'],
+            datasets: [{
+                label: 'Jumlah Laporan',
+                data: [{{ $totalPatroliHariIni ?? 0 }}, {{ $totalCleaningHariIni ?? 0 }}],
+                backgroundColor: ['#2563eb', '#10b981'],
+                borderRadius: 12,
+                borderSkipped: false,
+                maxBarThickness: 40
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#475569', font: { size: 12 } }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#475569',
+                        precision: 0,
+                        stepSize: 1
+                    },
+                    grid: {
+                        color: '#f1f5f9',
+                        drawBorder: false
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#111827',
+                    padding: 10,
+                    titleColor: '#fff',
+                    bodyColor: '#f8fafc',
+                    callbacks: {
+                        label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}`
                     }
                 }
             }

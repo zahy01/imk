@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Rapot;
 use App\Models\Attendance;
+use App\Models\KinerjaCleaning;
+use App\Models\PatroliSecurity;
 use Carbon\Carbon;
 use PDF;
 use Illuminate\Support\Facades\Auth;
@@ -23,12 +25,12 @@ class RapotController extends Controller
             ->where('id', '!=', Auth::id())
             ->orderBy('name')
             ->paginate(15);
-        
+
         $rapots = Rapot::with('user')
             ->latest()
             ->take(10)
             ->get();
-        
+
         return view('rapot.admin.index', compact('users', 'rapots'));
     }
 
@@ -74,36 +76,36 @@ class RapotController extends Controller
                 'check_out' => $a->check_out,
                 'status' => $a->status
             ]);
-            
+
             // Cek apakah check_in dan check_out valid
             if ($a->check_in && $a->check_out) {
                 $hariHadir++;
-                
+
                 // Ekstrak hanya waktu (H:i) dari data
                 $checkInTime = $this->extractTimeOnly($a->check_in);
                 $checkOutTime = $this->extractTimeOnly($a->check_out);
-                
+
                 Log::info("Extracted times for absen #{$index}", [
                     'check_in_original' => $a->check_in,
                     'check_out_original' => $a->check_out,
                     'check_in_time' => $checkInTime,
                     'check_out_time' => $checkOutTime
                 ]);
-                
+
                 // Hitung jam kerja
                 $jamHariIni = $this->calculateWorkingHours($checkInTime, $checkOutTime);
-                
+
                 Log::info("Calculated hours for absen #{$index}", [
                     'jam_hari_ini' => $jamHariIni,
                     'check_in' => $checkInTime,
                     'check_out' => $checkOutTime
                 ]);
-                
+
                 if ($jamHariIni > 0) {
                     $totalJam += $jamHariIni;
                     $hariKerja++;
                 }
-                
+
                 if ($a->status == 'terlambat') {
                     $totalTerlambat++;
                 }
@@ -122,7 +124,7 @@ class RapotController extends Controller
                 ]);
             }
         }
-        
+
         Log::info('=== SUMMARY ===', [
             'total_jam' => $totalJam,
             'hari_kerja' => $hariKerja,
@@ -130,9 +132,9 @@ class RapotController extends Controller
             'total_terlambat' => $totalTerlambat,
             'detail_absen_count' => count($detailAbsen)
         ]);
-        
+
         return view('rapot.admin.evaluasi', compact(
-            'user', 
+            'user',
             'periode',
             'hariKerja',
             'totalJam',
@@ -152,17 +154,17 @@ class RapotController extends Controller
         if (empty($timeInput)) {
             return null;
         }
-        
+
         // Jika sudah dalam format H:i (08:00)
         if (is_string($timeInput) && preg_match('/^\d{1,2}:\d{2}$/', $timeInput)) {
             return $timeInput;
         }
-        
+
         // Jika Carbon object
         if ($timeInput instanceof Carbon) {
             return $timeInput->format('H:i');
         }
-        
+
         // Jika string datetime (2025-12-17 08:11:00)
         if (is_string($timeInput)) {
             try {
@@ -173,7 +175,7 @@ class RapotController extends Controller
                 Log::warning('Cannot parse time input: ' . $e->getMessage(), [
                     'time_input' => $timeInput
                 ]);
-                
+
                 // Coba ekstrak manual dari string
                 if (str_contains($timeInput, ' ')) {
                     $parts = explode(' ', $timeInput);
@@ -187,7 +189,7 @@ class RapotController extends Controller
                 }
             }
         }
-        
+
         return null;
     }
 
@@ -199,42 +201,42 @@ class RapotController extends Controller
         if (empty($checkIn) || empty($checkOut)) {
             return 0;
         }
-        
+
         Log::info('calculateWorkingHours INPUT', [
             'check_in' => $checkIn,
             'check_out' => $checkOut
         ]);
-        
+
         try {
             // Parse jam dan menit
             list($inHour, $inMinute) = explode(':', $checkIn);
             list($outHour, $outMinute) = explode(':', $checkOut);
-            
+
             $inHour = intval($inHour);
             $inMinute = intval($inMinute);
             $outHour = intval($outHour);
             $outMinute = intval($outMinute);
-            
+
             // Konversi ke menit dari midnight
             $inTotalMinutes = ($inHour * 60) + $inMinute;
             $outTotalMinutes = ($outHour * 60) + $outMinute;
-            
+
             // Jika check out lebih kecil dari check in (shift malam), tambah 24 jam
             if ($outTotalMinutes < $inTotalMinutes) {
                 $outTotalMinutes += (24 * 60); // Tambah 24 jam dalam menit
             }
-            
+
             // Hitung total menit kerja
             $totalMinutes = $outTotalMinutes - $inTotalMinutes;
-            
+
             // Kurangi waktu istirahat (60 menit = 1 jam)
             $istirahatMinutes = 60;
             $effectiveMinutes = max(0, $totalMinutes - $istirahatMinutes);
-            
+
             // Konversi ke jam dengan 2 desimal
             $hours = $effectiveMinutes / 60;
             $roundedHours = round($hours, 2);
-            
+
             Log::info('calculateWorkingHours RESULT', [
                 'check_in' => "{$inHour}:{$inMinute}",
                 'check_out' => "{$outHour}:{$outMinute}",
@@ -245,9 +247,9 @@ class RapotController extends Controller
                 'hours' => $hours,
                 'rounded_hours' => $roundedHours
             ]);
-            
+
             return $roundedHours;
-            
+
         } catch (\Exception $e) {
             Log::error('Error in calculateWorkingHours: ' . $e->getMessage(), [
                 'check_in' => $checkIn,
@@ -266,7 +268,7 @@ class RapotController extends Controller
         if (!in_array(Auth::user()->role, ['admin', 'manager'])) {
             abort(403, 'Unauthorized access.');
         }
-        
+
         $request->validate([
             'periode_start' => 'required|date',
             'periode_end' => 'required|date|after_or_equal:periode_start',
@@ -275,7 +277,7 @@ class RapotController extends Controller
             'catatan' => 'nullable|string|max:1000',
             'status' => 'required|in:draft,dikirim,selesai'
         ]);
-        
+
         $start = Carbon::parse($request->periode_start)->startOfDay();
         $end = Carbon::parse($request->periode_end)->endOfDay();
 
@@ -292,16 +294,16 @@ class RapotController extends Controller
         foreach ($absen as $a) {
             if ($a->check_in && $a->check_out) {
                 $hariHadir++;
-                
+
                 $checkInTime = $this->extractTimeOnly($a->check_in);
                 $checkOutTime = $this->extractTimeOnly($a->check_out);
                 $jamHariIni = $this->calculateWorkingHours($checkInTime, $checkOutTime);
-                
+
                 if ($jamHariIni > 0) {
                     $totalJam += $jamHariIni;
                     $hariKerja++;
                 }
-                
+
                 if ($a->status == 'terlambat') {
                     $totalTerlambat++;
                 }
@@ -404,7 +406,7 @@ class RapotController extends Controller
     public function indexUser()
     {
         $userField = $this->getUserFieldName();
-        $rapots = Rapot::where($userField, auth()->id())
+        $rapots = Rapot::where($userField, Auth::id())
             ->orderBy('periode_start', 'desc')
             ->paginate(10);
 
@@ -419,18 +421,41 @@ class RapotController extends Controller
         $userField = $this->getUserFieldName();
         $userFieldValue = $rapot->$userField ?? null;
 
-        if (!auth()->check() || (auth()->user()->role != 'admin' && $userFieldValue != auth()->id())) {
+        if (!Auth::check() || (Auth::user()->role != 'admin' && $userFieldValue != Auth::id())) {
             abort(403, 'Unauthorized');
         }
 
-        $detailAbsen = json_decode($rapot->detail_absen, true) ?? [];
-        $dataEvaluasi = json_decode($rapot->data_evaluasi, true) ?? [];
-
-        if ($rapot->tipe === 'evaluasi_kinerja') {
-            return view('rapot.show_evaluasi', compact('rapot', 'detailAbsen', 'dataEvaluasi'));
+        $detailAbsen = $rapot->detail_absen;
+        if (is_string($detailAbsen)) {
+            $detailAbsen = json_decode($detailAbsen, true) ?? [];
+        }
+        if (!is_array($detailAbsen)) {
+            $detailAbsen = [];
         }
 
-        return view('rapot.show_evaluasi', compact('rapot', 'detailAbsen'));
+        $dataEvaluasi = $rapot->data_evaluasi;
+        if (is_string($dataEvaluasi)) {
+            $dataEvaluasi = json_decode($dataEvaluasi, true) ?? [];
+        }
+        if (!is_array($dataEvaluasi)) {
+            $dataEvaluasi = [];
+        }
+
+        $cleaningEvidence = KinerjaCleaning::where('user_id', $userFieldValue)
+            ->whereBetween('tanggal', [$rapot->periode_start, $rapot->periode_end])
+            ->orderBy('tanggal', 'desc')
+            ->get();
+
+        $patrolEvidence = PatroliSecurity::where('user_id', $userFieldValue)
+            ->whereBetween('waktu_patroli', [$rapot->periode_start, $rapot->periode_end])
+            ->orderBy('waktu_patroli', 'desc')
+            ->get();
+
+        if ($rapot->tipe === 'evaluasi_kinerja') {
+            return view('rapot.show_evaluasi', compact('rapot', 'detailAbsen', 'dataEvaluasi', 'cleaningEvidence', 'patrolEvidence'));
+        }
+
+        return view('rapot.show_evaluasi', compact('rapot', 'detailAbsen', 'cleaningEvidence', 'patrolEvidence'));
     }
 
     /**
@@ -441,14 +466,37 @@ class RapotController extends Controller
         $userField = $this->getUserFieldName();
         $userFieldValue = $rapot->$userField ?? null;
 
-        if (!auth()->check() || (auth()->user()->role != 'admin' && $userFieldValue != auth()->id())) {
+        if (!Auth::check() || (Auth::user()->role != 'admin' && $userFieldValue != Auth::id())) {
             abort(403, 'Unauthorized');
         }
 
-        $detailAbsen = json_decode($rapot->detail_absen, true) ?? [];
-        $dataEvaluasi = json_decode($rapot->data_evaluasi, true) ?? [];
+        $detailAbsen = $rapot->detail_absen;
+        if (is_string($detailAbsen)) {
+            $detailAbsen = json_decode($detailAbsen, true) ?? [];
+        }
+        if (!is_array($detailAbsen)) {
+            $detailAbsen = [];
+        }
 
-        return view('rapot.show_evaluasi', compact('rapot', 'detailAbsen', 'dataEvaluasi'));
+        $dataEvaluasi = $rapot->data_evaluasi;
+        if (is_string($dataEvaluasi)) {
+            $dataEvaluasi = json_decode($dataEvaluasi, true) ?? [];
+        }
+        if (!is_array($dataEvaluasi)) {
+            $dataEvaluasi = [];
+        }
+
+        $cleaningEvidence = KinerjaCleaning::where('user_id', $rapot->$userField)
+            ->whereBetween('tanggal', [$rapot->periode_start, $rapot->periode_end])
+            ->orderBy('tanggal', 'desc')
+            ->get();
+
+        $patrolEvidence = PatroliSecurity::where('user_id', $rapot->$userField)
+            ->whereBetween('waktu_patroli', [$rapot->periode_start, $rapot->periode_end])
+            ->orderBy('waktu_patroli', 'desc')
+            ->get();
+
+        return view('rapot.show_evaluasi', compact('rapot', 'detailAbsen', 'dataEvaluasi', 'cleaningEvidence', 'patrolEvidence'));
     }
 
     /**
@@ -459,7 +507,7 @@ class RapotController extends Controller
         if (!in_array(Auth::user()->role, ['admin', 'manager'])) {
             abort(403, 'Unauthorized');
         }
-        
+
         $request->validate([
             'periode_start' => 'required|date',
             'periode_end' => 'required|date|after_or_equal:periode_start',
@@ -482,21 +530,21 @@ class RapotController extends Controller
         foreach ($absen as $a) {
             if ($a->check_in && $a->check_out) {
                 $hariHadir++;
-                
+
                 $checkInTime = $this->extractTimeOnly($a->check_in);
                 $checkOutTime = $this->extractTimeOnly($a->check_out);
                 $jamHariIni = $this->calculateWorkingHours($checkInTime, $checkOutTime);
-                
+
                 $totalJam += max(0, $jamHariIni);
-                
+
                 if ($jamHariIni >= 4) {
                     $hariKerja++;
                 }
-                
+
                 if ($a->status == 'terlambat') {
                     $totalTerlambat++;
                 }
-                
+
                 $detailAbsen[] = [
                     'tanggal' => $a->date->format('d/m/Y'),
                     'check_in' => $checkInTime,
@@ -538,7 +586,7 @@ class RapotController extends Controller
         if (!in_array(Auth::user()->role, ['admin', 'manager'])) {
             abort(403, 'Unauthorized');
         }
-        
+
         return view('rapot.edit', compact('rapot'));
     }
 
@@ -550,7 +598,7 @@ class RapotController extends Controller
         if (!in_array(Auth::user()->role, ['admin', 'manager'])) {
             abort(403, 'Unauthorized');
         }
-        
+
         $request->validate([
             'catatan' => 'required|string|max:500',
             'nilai'   => 'required|numeric|min:0|max:100',
@@ -584,7 +632,7 @@ class RapotController extends Controller
             ->route('admin.rapot.index')
             ->with('success', "Rapot {$namaUser} berhasil dihapus!");
     }
-    
+
     /**
      * DEBUG METHOD: Test perhitungan jam kerja
      */
@@ -597,7 +645,7 @@ class RapotController extends Controller
             ['check_in' => '09:00', 'check_out' => '17:00'],
             ['check_in' => '13:00', 'check_out' => '21:00'],
         ];
-        
+
         $results = [];
         foreach ($testCases as $test) {
             $jam = $this->calculateWorkingHours($test['check_in'], $test['check_out']);
@@ -606,14 +654,14 @@ class RapotController extends Controller
                 'jam_kerja' => $jam
             ];
         }
-        
+
         return response()->json([
             'success' => true,
             'results' => $results,
             'note' => 'Perhitungan: (check_out - check_in - 1 jam istirahat)'
         ]);
     }
-    
+
     /**
      * DEBUG METHOD: Cek data absen mentah
      */
@@ -624,13 +672,13 @@ class RapotController extends Controller
             ->whereDate('date', '<=', Carbon::now()->endOfMonth())
             ->orderBy('date', 'asc')
             ->get();
-        
+
         $formattedData = [];
         foreach ($absen as $a) {
             $checkInTime = $this->extractTimeOnly($a->check_in);
             $checkOutTime = $this->extractTimeOnly($a->check_out);
             $jamKerja = $this->calculateWorkingHours($checkInTime, $checkOutTime);
-            
+
             $formattedData[] = [
                 'id' => $a->id,
                 'date' => $a->date,
@@ -644,7 +692,7 @@ class RapotController extends Controller
                 'check_out_type' => gettype($a->check_out)
             ];
         }
-        
+
         return response()->json([
             'user' => [
                 'id' => $user->id,

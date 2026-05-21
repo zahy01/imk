@@ -10,8 +10,10 @@ use App\Models\CatatanPanen;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Models\KinerjaCleaning;
+use App\Models\PatroliSecurity;
 use App\Exports\SheetAbsenExport;
 use App\Exports\RekapSemuaExport;
 
@@ -37,12 +39,12 @@ class HomeController extends Controller
     $today = now('Asia/Jakarta')->startOfDay();
 
     $totalPegawai = User::whereNotIn('role', ['admin', 'manager'])->count();
-    
+
     // Hitung kehadiran hari ini
     $hadirHariIni = Attendance::whereDate('date', $today->toDateString())
         ->whereNotNull('check_in')
         ->count();
-    
+
     // Hitung total terlambat
     $totalTerlambat = Attendance::whereDate('date', $today->toDateString())
         ->where('status', 'terlambat')
@@ -61,6 +63,38 @@ class HomeController extends Controller
     // Produksi hari ini
     $produksiHariIni = CatatanPanen::whereDate('tanggal', $today->toDateString())
         ->sum('berat_kg') ?? 0;
+
+    // Aktivitas keamanan dan kebersihan hari ini
+    $totalCleaningHariIni = KinerjaCleaning::whereDate('tanggal', $today->toDateString())
+        ->count();
+    $totalPatroliHariIni = PatroliSecurity::whereDate('waktu_patroli', $today->toDateString())
+        ->count();
+
+    $cleaningUserIds = KinerjaCleaning::whereDate('tanggal', $today->toDateString())
+        ->pluck('user_id')
+        ->filter()
+        ->unique()
+        ->toArray();
+    $patroliUserIds = PatroliSecurity::whereDate('waktu_patroli', $today->toDateString())
+        ->pluck('user_id')
+        ->filter()
+        ->unique()
+        ->toArray();
+
+    $reportingUsers = count(array_unique(array_merge($cleaningUserIds, $patroliUserIds)));
+
+    $cleaningAreas = KinerjaCleaning::whereDate('tanggal', $today->toDateString())
+        ->pluck('area')
+        ->filter()
+        ->unique()
+        ->toArray();
+    $patroliAreas = PatroliSecurity::whereDate('waktu_patroli', $today->toDateString())
+        ->pluck('nama_area')
+        ->filter()
+        ->unique()
+        ->toArray();
+
+    $totalAreas = count(array_unique(array_merge($cleaningAreas, $patroliAreas)));
 
     // Rate kehadiran (hitung berdasarkan yang sudah absen, baik tepat waktu maupun terlambat)
     $totalHadirDanTerlambat = $hadirHariIni;
@@ -96,6 +130,10 @@ class HomeController extends Controller
         'totalPegawai',
         'hadirHariIni',
         'produksiHariIni',
+        'totalCleaningHariIni',
+        'totalPatroliHariIni',
+        'reportingUsers',
+        'totalAreas',
         'rateKehadiran',
         'recentActivities',
         'departments',
@@ -243,11 +281,11 @@ class HomeController extends Controller
 
         // Statistik tambahan
         $avgProduksi = $produktivitasData->avg('total_produksi') ?? 0;
-        
+
         $totalProduksiBulanIni = CatatanPanen::whereMonth('tanggal', now('Asia/Jakarta')->month)
             ->whereYear('tanggal', now('Asia/Jakarta')->year)
             ->sum('berat_kg') ?? 0;
-        
+
         $peakProduksi = $produktivitasData->max('total_produksi') ?? 0;
 
         // Hitung trend produksi
@@ -255,12 +293,12 @@ class HomeController extends Controller
         if ($produktivitasData->count() >= 2) {
             $latestData = $produktivitasData->last();
             $previousData = $produktivitasData->slice(-2, 1)->first();
-            
+
             if ($latestData && $previousData && $previousData['total_produksi'] > 0) {
                 $latest = $latestData['total_produksi'];
                 $previous = $previousData['total_produksi'];
                 $change = (($latest - $previous) / $previous) * 100;
-                
+
                 if ($change > 10) $trend = 'Naik';
                 else if ($change < -10) $trend = 'Turun';
             }
@@ -279,7 +317,7 @@ class HomeController extends Controller
                 $produksi = CatatanPanen::where('id_pegawai', $item->user_id)
                     ->whereDate('tanggal', now('Asia/Jakarta')->toDateString())
                     ->sum('berat_kg');
-                
+
                 $item->produksi_harian = $produksi;
                 return $item;
             });
@@ -328,11 +366,11 @@ class HomeController extends Controller
 
    public function cleaningDashboard()
 {
-    $absenHariIni = Attendance::where('user_id', auth()->id())
+    $absenHariIni = Attendance::where('user_id', Auth::id())
         ->whereDate('created_at', today())
         ->first();
 
-    $jumlahAreaHariIni = KinerjaCleaning::where('user_id', auth()->id())
+    $jumlahAreaHariIni = KinerjaCleaning::where('user_id', Auth::id())
         ->whereDate('tanggal', now()->toDateString())
         ->count();
 
@@ -468,12 +506,12 @@ class HomeController extends Controller
         // Query total berat sawit yang benar
         $totalPalmWeight = 0;
         $averagePalmWeight = 0;
-        
+
         // Hanya hitung jika role 'user' atau tidak ada filter
         if (!$role || $role == 'user') {
             // Query untuk total berat sawit dari CatatanPanen
             $palmQuery = CatatanPanen::query();
-            
+
             // Filter berdasarkan periode
             if ($dataType == 'today') {
                 $palmQuery->whereDate('tanggal', $today->toDateString());
@@ -483,16 +521,16 @@ class HomeController extends Controller
                     $endDate->toDateString()
                 ]);
             }
-            
+
             if ($role == 'user') {
                 // Filter berdasarkan user yang role 'user'
                 $palmQuery->whereHas('pegawai', function($q) {
                     $q->where('role', 'user');
                 });
             }
-            
+
             $totalPalmWeight = $palmQuery->sum('berat_kg') ?? 0;
-            
+
             // Hitung rata-rata berdasarkan jumlah user dengan panen
             $countPanen = $palmQuery->distinct('id_pegawai')->count('id_pegawai');
             $averagePalmWeight = $countPanen > 0 ? round($totalPalmWeight / $countPanen, 2) : 0;
@@ -500,7 +538,7 @@ class HomeController extends Controller
 
         // Total kehadiran
         $hadirQuery = Attendance::whereNotNull('check_in');
-        
+
         // Filter berdasarkan periode
         if ($dataType == 'today') {
             $hadirQuery->whereDate('date', $today->toDateString());
@@ -510,19 +548,19 @@ class HomeController extends Controller
                 $endDate->toDateString()
             ]);
         }
-            
+
         if ($role) {
             $hadirQuery->whereHas('user', function($q) use ($role) {
                 $q->where('role', $role);
             });
         }
-        
+
         $totalHadir = $hadirQuery->distinct('user_id')->count('user_id');
 
         // Data untuk chart panen harian (7 hari terakhir DARI HARI INI)
         $chartEndDate = now('Asia/Jakarta')->startOfDay();
         $chartStartDate = $chartEndDate->copy()->subDays(6);
-        
+
         $dailyPalmWeight = CatatanPanen::select(
                 DB::raw('DATE(tanggal) as date'),
                 DB::raw('SUM(berat_kg) as total_weight')
@@ -568,7 +606,7 @@ class HomeController extends Controller
                     DB::raw('SUM(berat_kg) as total_weight'),
                     DB::raw('COUNT(*) as total_days')
                 );
-            
+
             // Filter berdasarkan periode
             if ($dataType == 'today') {
                 $topPerformersQuery->whereDate('tanggal', $today->toDateString());
@@ -578,7 +616,7 @@ class HomeController extends Controller
                     $endDate->toDateString()
                 ]);
             }
-                
+
             $topPerformers = $topPerformersQuery
                 ->when($role == 'user', function($q) {
                     $q->whereHas('pegawai', function($q2) {
@@ -657,7 +695,7 @@ class HomeController extends Controller
 
         if ($hasAttendance || $hasPanen || $hasRapot) {
             // Kirim ke view dengan data riwayat untuk konfirmasi force delete
-            return redirect()->route('manager.pegawai')->with('warning', 
+            return redirect()->route('manager.pegawai')->with('warning',
                 'Pegawai memiliki riwayat data. Gunakan Hapus Paksa untuk menghapus semua data terkait.');
         }
 
@@ -677,49 +715,49 @@ class HomeController extends Controller
 
         // Validasi konfirmasi
         if (!$request->has('confirm_delete') || $request->confirm_delete !== 'YA') {
-            return redirect()->route('manager.pegawai')->with('error', 
+            return redirect()->route('manager.pegawai')->with('error',
                 'Konfirmasi tidak valid. Harap centang konfirmasi dan ketik YA.');
         }
 
         // Mulai transaksi database
         DB::beginTransaction();
-        
+
         try {
             $pegawaiName = $pegawai->name;
             $pegawaiId = $pegawai->id;
-            
+
             // Hapus riwayat rapot terlebih dahulu (jika ada foreign key constraint)
             if (class_exists('\App\Models\Rapot')) {
                 \App\Models\Rapot::where('id_user', $pegawaiId)->delete();
                 \App\Models\Rapot::where('evaluator_id', $pegawaiId)->update(['evaluator_id' => null]);
             }
-            
+
             // Hapus riwayat panen
             CatatanPanen::where('id_pegawai', $pegawaiId)->delete();
-            
+
             // Hapus riwayat absensi
             Attendance::where('user_id', $pegawaiId)->delete();
-            
+
             // Hapus riwayat pengumuman yang dibuat (jika ada)
             if (class_exists('\App\Models\Announcement')) {
                 \App\Models\Announcement::where('created_by', $pegawaiId)->update(['created_by' => null]);
             }
-            
+
             // Hapus user
             $pegawai->delete();
-            
+
             // Commit transaksi
             DB::commit();
-            
-            return redirect()->route('manager.pegawai')->with('success', 
+
+            return redirect()->route('manager.pegawai')->with('success',
                 "Pegawai <strong>$pegawaiName</strong> berhasil dihapus beserta semua riwayatnya!");
-                
+
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            \Log::error('Force delete pegawai gagal: ' . $e->getMessage());
-            
-            return redirect()->route('manager.pegawai')->with('error', 
+
+            Log::error('Force delete pegawai gagal: ' . $e->getMessage());
+
+            return redirect()->route('manager.pegawai')->with('error',
                 'Terjadi kesalahan saat menghapus pegawai: ' . $e->getMessage());
         }
     }
@@ -940,12 +978,12 @@ class HomeController extends Controller
         // Query total berat sawit yang benar
         $totalPalmWeight = 0;
         $averagePalmWeight = 0;
-        
+
         // Hanya hitung jika role 'user' atau tidak ada filter
         if (!$role || $role == 'user') {
             // Query untuk total berat sawit dari CatatanPanen
             $palmQuery = CatatanPanen::query();
-            
+
             // Filter berdasarkan periode
             if ($dataType == 'today') {
                 $palmQuery->whereDate('tanggal', $today->toDateString());
@@ -955,7 +993,7 @@ class HomeController extends Controller
                     $endDate->toDateString()
                 ]);
             }
-            
+
             if ($role == 'user') {
                 // Filter berdasarkan user yang role 'user'
                 $palmQuery->whereHas('pegawai', function($q) {
@@ -967,9 +1005,9 @@ class HomeController extends Controller
                     $q->where('role', 'user');
                 });
             }
-            
+
             $totalPalmWeight = $palmQuery->sum('berat_kg') ?? 0;
-            
+
             // Hitung rata-rata berdasarkan jumlah user dengan panen
             $countPanen = $palmQuery->distinct('id_pegawai')->count('id_pegawai');
             $averagePalmWeight = $countPanen > 0 ? round($totalPalmWeight / $countPanen, 2) : 0;
@@ -977,7 +1015,7 @@ class HomeController extends Controller
 
         // Total kehadiran
         $hadirQuery = Attendance::whereNotNull('check_in');
-        
+
         // Filter berdasarkan periode
         if ($dataType == 'today') {
             $hadirQuery->whereDate('date', $today->toDateString());
@@ -987,7 +1025,7 @@ class HomeController extends Controller
                 $endDate->toDateString()
             ]);
         }
-        
+
         if ($role) {
             $hadirQuery->whereHas('user', function($q) use ($role) {
                 $q->where('role', $role);
@@ -997,13 +1035,13 @@ class HomeController extends Controller
                 $q->whereIn('role', ['user', 'security', 'cleaning', 'kantoran']);
             });
         }
-        
+
         $totalHadir = $hadirQuery->distinct('user_id')->count('user_id');
 
         // Data untuk chart panen harian (7 hari terakhir DARI HARI INI)
         $chartEndDate = now('Asia/Jakarta')->startOfDay();
         $chartStartDate = $chartEndDate->copy()->subDays(6);
-        
+
         $dailyPalmWeight = CatatanPanen::select(
                 DB::raw('DATE(tanggal) as date'),
                 DB::raw('SUM(berat_kg) as total_weight')
@@ -1055,7 +1093,7 @@ class HomeController extends Controller
                     DB::raw('SUM(berat_kg) as total_weight'),
                     DB::raw('COUNT(*) as total_days')
                 );
-            
+
             // Filter berdasarkan periode
             if ($dataType == 'today') {
                 $topPerformersQuery->whereDate('tanggal', $today->toDateString());
@@ -1065,7 +1103,7 @@ class HomeController extends Controller
                     $endDate->toDateString()
                 ]);
             }
-            
+
             $topPerformers = $topPerformersQuery
                 ->when($role == 'user', function($q) {
                     $q->whereHas('pegawai', function($q2) {
@@ -1138,7 +1176,7 @@ class HomeController extends Controller
     public function userRiwayat()
     {
         $userId = Auth::id();
-        
+
         $attendances = Attendance::where('user_id', $userId)
             ->orderBy('date', 'desc')
             ->paginate(10);
@@ -1237,10 +1275,10 @@ class HomeController extends Controller
         // Ambil tanggal pertama dan terakhir dari database
         $firstAttendance = \App\Models\Attendance::min('date');
         $lastAttendance = \App\Models\Attendance::max('date');
-        
+
         $firstPanen = \App\Models\CatatanPanen::min('tanggal');
         $lastPanen = \App\Models\CatatanPanen::max('tanggal');
-        
+
         $from = min($firstAttendance, $firstPanen) ?: now()->subMonth()->format('Y-m-d');
         $to = max($lastAttendance, $lastPanen) ?: now()->format('Y-m-d');
 

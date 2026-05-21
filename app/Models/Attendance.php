@@ -8,6 +8,10 @@ use App\Models\CatatanPanen;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
+/**
+ * @mixin \Illuminate\Database\Eloquent\Builder
+ * @method static \Illuminate\Database\Eloquent\Builder whereDate(string $column, string $operator = null, mixed $value = null)
+ */
 class Attendance extends Model
 {
     use HasFactory;
